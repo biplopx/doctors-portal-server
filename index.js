@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
+const nodemailer = require("nodemailer");
 const { MongoClient, ServerApiVersion } = require('mongodb');
 require('dotenv').config();
 const app = express();
@@ -32,6 +33,50 @@ function verifyJWT(req, res, next) {
   });
 }
 
+
+// send email
+const transporter = nodemailer.createTransport({
+  host: 'smtp.zoho.com',
+  port: 465,
+  secure: true, //ssl
+  auth: {
+    user: process.env.ZOHO_EMAIL,
+    pass: process.env.ZOHO_PASS
+  }
+});
+
+function sendAppointmentEmail(booking) {
+  const { patient, patientName, treatment, date, slot } = booking;
+
+  var email = {
+    from: 'blog@biplophossain.me',
+    to: patient,
+    subject: `Your Appointment for ${treatment} is on ${date} at ${slot} is Confirmed`,
+    text: `Your Appointment for ${treatment} is on ${date} at ${slot} is Confirmed`,
+    html: `
+      <div>
+        <p> Hello ${patientName}, </p>
+        <h3>Your Appointment for ${treatment} is confirmed</h3>
+        <p>Looking forward to seeing you on ${date} at ${slot}.</p>
+        
+        <h3>Our Address</h3>
+        <p>Andor Killa Bandorban</p>
+        <p>Bangladesh</p>
+        <a href="https://web.programming-hero.com/">unsubscribe</a>
+      </div>
+    `
+  };
+
+  transporter.sendMail(email, function (err, info) {
+    if (err) {
+      console.log(err);
+    }
+    else {
+      console.log('Message sent: ', info);
+    }
+  });
+
+}
 
 
 async function run() {
@@ -143,7 +188,7 @@ async function run() {
       res.send(result);
     })
 
-    // Booking api
+    // Booking post api
 
     app.post('/booking', async (req, res) => {
       const booking = req.body;
@@ -153,6 +198,8 @@ async function run() {
         return res.send({ success: false, booking: exists })
       }
       const result = await bookingCollection.insertOne(booking);
+      console.log('sending email');
+      sendAppointmentEmail(booking);
       return res.send({ success: true, result });
     });
 
